@@ -43,9 +43,6 @@ jobs:
         with:
           name: binary
 
-      - name: Create clips folder
-        run: mkdir clips
-
       - name: Docker meta
         id: docker_meta
         uses: crazy-max/ghaction-docker-meta@v1
