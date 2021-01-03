@@ -1,3 +1,7 @@
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/dominikks/discord-streamable-bot/Build%20app)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/dominikks/discord-streamable-bot)
+![GitHub](https://img.shields.io/github/license/dominikks/discord-streamable-bot)
+
 # discord-streamable-bot
 
 A discord bot that automatically downloads streamable clips posted to a text channel.
@@ -20,6 +24,7 @@ docker run -e DISCORD_TOKEN=<token> -v ./clips:/app/clips ghcr.io/dominikks/disc
 ```
 
 Clips are saved under `/app/clips` in the container, so feel free to mount that somewhere.
+By default, the app runs with UID 1000, so make sure the mounted folder is owned by a user with that UID (e.g. `chown 1000 ./clips`).
 
 To add the bot to your Discord server, you can use the following link.
 You can get the client id from the "General Information" tab of your application in the Discord Developer Portal.
