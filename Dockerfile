@@ -4,7 +4,7 @@ RUN addgroup --gid 1000 discordbot \
   && mkdir -p /app/clips \
   && chown -R discordbot:discordbot /app
 
-ADD --chown=discordbot:discordbot discord-streamable-bot /app/
+ADD --chown=discordbot:discordbot target/release/discord-streamable-bot /app/
 RUN chmod +x /app/discord-streamable-bot
 
 # Deploy

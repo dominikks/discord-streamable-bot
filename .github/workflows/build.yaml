@@ -16,20 +16,20 @@ jobs:
           toolchain: nightly
           default: true
 
+      - name: Initialize cache
+        uses: Swatinem/rust-cache@v1
+
       - name: Compile
         uses: actions-rs/cargo@v1
         with:
           command: build
           args: --release
 
-      - name: Rename binary
-        run: mv target/release/discord-streamable-bot discord-streamable-bot
-
       - name: Archive binary
         uses: actions/upload-artifact@v2
         with:
           name: binary
-          path: discord-streamable-bot
+          path: target/release/discord-streamable-bot
 
   docker:
     name: Build docker image
@@ -42,6 +42,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: binary
+          path: target/release/discord-streamable-bot
 
       - name: Docker meta
         id: docker_meta
