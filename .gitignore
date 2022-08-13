@@ -1,3 +1,4 @@
 /target
 /clips
 /sounds/**/*.mp3
+/.env

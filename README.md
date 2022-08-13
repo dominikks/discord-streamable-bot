@@ -17,6 +17,7 @@ The app is available via Docker.
 
 You need to get a Bot token from the [Discord Developer Portal](https://discord.com/developers/applications).
 To get one, go to the portal, add an application, go to the bot tab, create a bot and copy the token.
+Also check the box for "Message Content Intent" under priviledged intents (otherwise the bot cannot extract the links from your messages).
 Then, you can run the bot:
 
 ```
@@ -38,7 +39,7 @@ Your bot is now active in your server and searchs for streamable links in all te
 
 ## Development
 
-You need to have the rust nightly toolchain intalled.
+You need to have the rust toolchain.
 Then, simply execute
 
 ```

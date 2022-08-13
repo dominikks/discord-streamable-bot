@@ -1,4 +1,5 @@
-use tracing_subscriber::fmt;
+use dotenv::dotenv;
+use tracing_subscriber::{fmt, EnvFilter};
 
 mod discord_client;
 mod streamable_client;
@@ -7,8 +8,12 @@ use discord_client::DiscordClient;
 
 #[tokio::main]
 async fn main() {
+    // Load .env file
+    dotenv().ok();
+
     let format = fmt::format();
-    let subscriber = fmt().event_format(format).finish();
+    let filter = EnvFilter::from_default_env();
+    let subscriber = fmt().event_format(format).with_env_filter(filter).finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting tracing default failed");
 
     let mut client = DiscordClient::new().await;

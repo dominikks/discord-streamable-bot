@@ -24,27 +24,24 @@ struct StreamableResponse {
 #[derive(Debug, Deserialize)]
 struct StreamableFile {
     url: Option<String>,
-    width: u32,
-    height: u32,
-    duration: f32,
 }
 
 #[derive(Debug)]
 pub enum DownloadError {
-    ParseError(),
-    FetchError(reqwest::Error),
-    ApiError(),
-    FilesystemError(std::io::Error),
+    Parse(),
+    Fetch(reqwest::Error),
+    Api(),
+    Filesystem(std::io::Error),
 }
 
 impl From<reqwest::Error> for DownloadError {
     fn from(e: reqwest::Error) -> Self {
-        DownloadError::FetchError(e)
+        DownloadError::Fetch(e)
     }
 }
 impl From<std::io::Error> for DownloadError {
     fn from(e: std::io::Error) -> Self {
-        DownloadError::FilesystemError(e)
+        DownloadError::Filesystem(e)
     }
 }
 
@@ -52,7 +49,7 @@ impl From<std::io::Error> for DownloadError {
 pub async fn download_clip(shortcode: &str, filename_prefix: &str) -> Result<(), DownloadError> {
     let url = Url::parse("https://api.streamable.com/videos/")
         .and_then(|url| url.join(shortcode))
-        .map_err(|_e| DownloadError::ParseError())?;
+        .map_err(|_e| DownloadError::Parse())?;
     let res: StreamableResponse = reqwest::get(url).await?.error_for_status()?.json().await?;
 
     let title = res.title;
@@ -60,7 +57,7 @@ pub async fn download_clip(shortcode: &str, filename_prefix: &str) -> Result<(),
         .files
         .get("mp4")
         .and_then(|f| f.url.clone())
-        .ok_or(DownloadError::ApiError())?;
+        .ok_or(DownloadError::Api())?;
     debug!(?url, ?title, "Found clip metadata");
 
     // https://github.com/seanmonstar/reqwest/issues/482#issuecomment-586508535

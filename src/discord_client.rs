@@ -15,8 +15,8 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    #[instrument(skip(self, ready))]
-    async fn ready(&self, _: Context, ready: Ready) {
+    #[instrument(skip(self, _ctx, ready))]
+    async fn ready(&self, _ctx: Context, ready: Ready) {
         info!("{} is connected!", ready.user.name);
     }
 
@@ -61,7 +61,9 @@ impl DiscordClient {
     #[instrument]
     pub async fn new() -> DiscordClient {
         let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in the environment");
-        let client = Client::builder(&token)
+
+        let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
+        let client = Client::builder(&token, intents)
             .event_handler(Handler)
             .await
             .expect("Error creating client");
