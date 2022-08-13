@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "discord-streamable-bot"
-version = "0.1.2-dev"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "dotenv",
