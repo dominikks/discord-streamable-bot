@@ -15,64 +15,64 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-  #[instrument(skip(self, ready))]
-  async fn ready(&self, _: Context, ready: Ready) {
-    info!("{} is connected!", ready.user.name);
-  }
-
-  #[instrument(skip(self, ctx))]
-  async fn message(&self, ctx: Context, msg: Message) {
-    lazy_static! {
-      static ref STREAMABLE_REGEX: Regex =
-        Regex::new(r"https://streamable\.com/([a-z0-9]+)").unwrap();
+    #[instrument(skip(self, ready))]
+    async fn ready(&self, _: Context, ready: Ready) {
+        info!("{} is connected!", ready.user.name);
     }
 
-    if let Some(capture) = STREAMABLE_REGEX.captures(&msg.content) {
-      let shortcode = capture.get(1).unwrap().as_str();
-      let reaction = msg
-        .react(&ctx.http, ReactionType::try_from("⏬").unwrap())
-        .await
-        .unwrap();
-
-      info!(?shortcode, "Downloading streamable clip");
-      let reaction_ftr = match download_clip(shortcode, &msg.author.name).await {
-        Ok(()) => {
-          info!("Download successful");
-          msg.react(&ctx.http, ReactionType::try_from("✅").unwrap())
+    #[instrument(skip(self, ctx))]
+    async fn message(&self, ctx: Context, msg: Message) {
+        lazy_static! {
+            static ref STREAMABLE_REGEX: Regex =
+                Regex::new(r"https://streamable\.com/([a-z0-9]+)").unwrap();
         }
-        Err(e) => {
-          error!(?e, "Download failed");
-          msg.react(&ctx.http, ReactionType::try_from("❌").unwrap())
-        }
-      };
 
-      let (del_res, react_res) = join!(reaction.delete(&ctx.http), reaction_ftr);
-      del_res.unwrap();
-      react_res.unwrap();
+        if let Some(capture) = STREAMABLE_REGEX.captures(&msg.content) {
+            let shortcode = capture.get(1).unwrap().as_str();
+            let reaction = msg
+                .react(&ctx.http, ReactionType::try_from("⏬").unwrap())
+                .await
+                .unwrap();
+
+            info!(?shortcode, "Downloading streamable clip");
+            let reaction_ftr = match download_clip(shortcode, &msg.author.name).await {
+                Ok(()) => {
+                    info!("Download successful");
+                    msg.react(&ctx.http, ReactionType::try_from("✅").unwrap())
+                }
+                Err(e) => {
+                    error!(?e, "Download failed");
+                    msg.react(&ctx.http, ReactionType::try_from("❌").unwrap())
+                }
+            };
+
+            let (del_res, react_res) = join!(reaction.delete(&ctx.http), reaction_ftr);
+            del_res.unwrap();
+            react_res.unwrap();
+        }
     }
-  }
 }
 
 pub struct DiscordClient {
-  pub client: Client,
+    pub client: Client,
 }
 
 impl DiscordClient {
-  #[instrument]
-  pub async fn new() -> DiscordClient {
-    let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in the environment");
-    let client = Client::builder(&token)
-      .event_handler(Handler)
-      .await
-      .expect("Error creating client");
+    #[instrument]
+    pub async fn new() -> DiscordClient {
+        let token = env::var("DISCORD_TOKEN").expect("Expected DISCORD_TOKEN in the environment");
+        let client = Client::builder(&token)
+            .event_handler(Handler)
+            .await
+            .expect("Error creating client");
 
-    return DiscordClient { client };
-  }
-
-  #[instrument(skip(self))]
-  pub async fn run(&mut self) {
-    if let Err(why) = self.client.start().await {
-      info!("Client ended: {:?}", why);
+        DiscordClient { client }
     }
-  }
+
+    #[instrument(skip(self))]
+    pub async fn run(&mut self) {
+        if let Err(why) = self.client.start().await {
+            info!("Client ended: {:?}", why);
+        }
+    }
 }
