@@ -1,7 +1,7 @@
 [package]
 name = "discord-streamable-bot"
-version = "0.1.2"
-authors = ["Dominik Kus <dominik@kdtk.de>"]
+version = "0.1.3-dev"
+authors = ["Dominik Kus <dominik@kus.software>"]
 edition = "2021"
 
 [dependencies]
