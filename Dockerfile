@@ -3,6 +3,9 @@
 FROM clux/muslrust:stable as builder
 WORKDIR /app
 
+# Install OpenSSL development packages for dependencies that require it
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+
 ### Dep caching start
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
