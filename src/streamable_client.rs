@@ -47,7 +47,21 @@ impl From<std::io::Error> for DownloadError {
 
 #[instrument]
 pub async fn download_clip(shortcode: &str, filename_prefix: &str) -> Result<(), DownloadError> {
-    let url = Url::parse("https://api.streamable.com/videos/")
+    download_clip_with_base_url(
+        shortcode,
+        filename_prefix,
+        "https://api.streamable.com/videos/",
+    )
+    .await
+}
+
+#[instrument]
+async fn download_clip_with_base_url(
+    shortcode: &str,
+    filename_prefix: &str,
+    base_url: &str,
+) -> Result<(), DownloadError> {
+    let url = Url::parse(base_url)
         .and_then(|url| url.join(shortcode))
         .map_err(|_e| DownloadError::Parse())?;
     let res: StreamableResponse = reqwest::get(url).await?.error_for_status()?.json().await?;
@@ -65,7 +79,7 @@ pub async fn download_clip(shortcode: &str, filename_prefix: &str) -> Result<(),
         .await?
         .error_for_status()?
         .bytes_stream()
-        .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
+        .map_err(futures::io::Error::other)
         .into_async_read()
         .compat();
     let mut out = File::create(DOWNLOADS_FOLDER.join(sanitize(format!(

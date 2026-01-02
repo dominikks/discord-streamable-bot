@@ -11,6 +11,20 @@ use std::env;
 use tokio::join;
 use tracing::{error, info, instrument};
 
+/// Extracts a streamable shortcode from a message containing a streamable link.
+/// Returns the shortcode if found, None otherwise.
+pub fn extract_streamable_shortcode(message: &str) -> Option<String> {
+    lazy_static! {
+        static ref STREAMABLE_REGEX: Regex =
+            Regex::new(r"https://streamable\.com/([a-z0-9]+)").unwrap();
+    }
+
+    STREAMABLE_REGEX
+        .captures(message)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str().to_string())
+}
+
 struct Handler;
 
 #[async_trait]
@@ -22,20 +36,14 @@ impl EventHandler for Handler {
 
     #[instrument(skip(self, ctx))]
     async fn message(&self, ctx: Context, msg: Message) {
-        lazy_static! {
-            static ref STREAMABLE_REGEX: Regex =
-                Regex::new(r"https://streamable\.com/([a-z0-9]+)").unwrap();
-        }
-
-        if let Some(capture) = STREAMABLE_REGEX.captures(&msg.content) {
-            let shortcode = capture.get(1).unwrap().as_str();
+        if let Some(shortcode) = extract_streamable_shortcode(&msg.content) {
             let reaction = msg
                 .react(&ctx.http, ReactionType::try_from("⏬").unwrap())
                 .await
                 .unwrap();
 
             info!(?shortcode, "Downloading streamable clip");
-            let reaction_ftr = match download_clip(shortcode, &msg.author.name).await {
+            let reaction_ftr = match download_clip(&shortcode, &msg.author.name).await {
                 Ok(()) => {
                     info!("Download successful");
                     msg.react(&ctx.http, ReactionType::try_from("✅").unwrap())
