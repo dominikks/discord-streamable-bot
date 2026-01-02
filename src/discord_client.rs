@@ -11,6 +11,20 @@ use std::env;
 use tokio::join;
 use tracing::{error, info, instrument};
 
+/// Extracts the shortcode from a streamable URL in a message.
+/// Returns None if no valid streamable URL is found.
+fn extract_streamable_shortcode(content: &str) -> Option<&str> {
+    lazy_static! {
+        static ref STREAMABLE_REGEX: Regex =
+            Regex::new(r"https://streamable\.com/([a-z0-9]+)").unwrap();
+    }
+
+    STREAMABLE_REGEX
+        .captures(content)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str())
+}
+
 struct Handler;
 
 #[async_trait]
@@ -22,13 +36,7 @@ impl EventHandler for Handler {
 
     #[instrument(skip(self, ctx))]
     async fn message(&self, ctx: Context, msg: Message) {
-        lazy_static! {
-            static ref STREAMABLE_REGEX: Regex =
-                Regex::new(r"https://streamable\.com/([a-z0-9]+)").unwrap();
-        }
-
-        if let Some(capture) = STREAMABLE_REGEX.captures(&msg.content) {
-            let shortcode = capture.get(1).unwrap().as_str();
+        if let Some(shortcode) = extract_streamable_shortcode(&msg.content) {
             let reaction = msg
                 .react(&ctx.http, ReactionType::try_from("⏬").unwrap())
                 .await
@@ -75,6 +83,66 @@ impl DiscordClient {
     pub async fn run(&mut self) {
         if let Err(why) = self.client.start().await {
             info!("Client ended: {:?}", why);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Parameterized test cases for extract_streamable_shortcode
+    #[test]
+    fn test_extract_streamable_shortcode() {
+        let test_cases = vec![
+            // (input, expected_output, description)
+            (
+                "Check out this clip: https://streamable.com/abc123",
+                Some("abc123"),
+                "valid url with text",
+            ),
+            (
+                "https://streamable.com/first and https://streamable.com/second",
+                Some("first"),
+                "multiple urls - extracts first",
+            ),
+            ("Just a regular message", None, "no url"),
+            ("https://streamable.com/", None, "incomplete url"),
+            (
+                "https://streamable.com/ABC123",
+                None,
+                "uppercase not allowed",
+            ),
+            (
+                "https://streamable.com/xyz789",
+                Some("xyz789"),
+                "alphanumeric",
+            ),
+            (
+                "Hey everyone! Check this out: https://streamable.com/test123 - awesome!",
+                Some("test123"),
+                "url embedded in text",
+            ),
+            (
+                "https://streamable.com/a1b2c3d4",
+                Some("a1b2c3d4"),
+                "longer code",
+            ),
+            ("streamable.com/test", None, "missing https"),
+            (
+                "https://streamable.com/test-123",
+                Some("test"),
+                "hyphen stops matching",
+            ),
+        ];
+
+        for (input, expected, description) in test_cases {
+            let result = extract_streamable_shortcode(input);
+            assert_eq!(
+                result, expected,
+                "Failed test case: {} - input: '{}'",
+                description, input
+            );
         }
     }
 }
