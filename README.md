@@ -47,3 +47,29 @@ DISCORD_TOKEN=<token> cargo run
 ```
 
 to run the app.
+
+### Testing
+
+Run the tests with:
+
+```bash
+cargo test
+```
+
+Or with output:
+
+```bash
+cargo test -- --nocapture
+```
+
+### Linting and Formatting
+
+Format code:
+```bash
+cargo fmt
+```
+
+Run linter:
+```bash
+cargo clippy
+```

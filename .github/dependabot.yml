@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Update Rust dependencies monthly
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
+  # Update GitHub Actions monthly
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
