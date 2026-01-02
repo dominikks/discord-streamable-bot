@@ -50,7 +50,7 @@ to run the app.
 
 ### Testing
 
-The project includes unit and integration tests to verify the core functionality.
+The project includes comprehensive tests to verify the full functionality.
 Run the tests with:
 
 ```bash
@@ -58,9 +58,13 @@ cargo test
 ```
 
 The test suite includes:
-- Tests for extracting streamable links from Discord messages
-- Tests for URL parsing and error handling
-- Integration tests that verify the bot's message processing logic
+- **Parameterized unit tests** for extracting streamable links from Discord messages (10 test cases)
+- **Integration tests** that mock HTTP endpoints and verify:
+  - Full download flow with file creation and content verification
+  - API error handling
+  - Missing MP4 file handling
+
+Tests are located inline in the source files (`src/discord_client.rs` and `src/streamable_client.rs`) using Rust's built-in `#[cfg(test)]` modules.
 
 To run tests with output:
 

@@ -1,7 +1,10 @@
 use dotenv::dotenv;
 use tracing_subscriber::{fmt, EnvFilter};
 
-use discord_streamable_bot::discord_client::DiscordClient;
+mod discord_client;
+mod streamable_client;
+
+use discord_client::DiscordClient;
 
 #[tokio::main]
 async fn main() {

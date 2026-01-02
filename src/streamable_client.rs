@@ -47,19 +47,21 @@ impl From<std::io::Error> for DownloadError {
 
 #[instrument]
 pub async fn download_clip(shortcode: &str, filename_prefix: &str) -> Result<(), DownloadError> {
-    download_clip_with_base_url(
+    download_clip_internal(
         shortcode,
         filename_prefix,
         "https://api.streamable.com/videos/",
+        &DOWNLOADS_FOLDER,
     )
     .await
 }
 
 #[instrument]
-async fn download_clip_with_base_url(
+async fn download_clip_internal(
     shortcode: &str,
     filename_prefix: &str,
     base_url: &str,
+    download_folder: &Path,
 ) -> Result<(), DownloadError> {
     let url = Url::parse(base_url)
         .and_then(|url| url.join(shortcode))
@@ -82,7 +84,7 @@ async fn download_clip_with_base_url(
         .map_err(futures::io::Error::other)
         .into_async_read()
         .compat();
-    let mut out = File::create(DOWNLOADS_FOLDER.join(sanitize(format!(
+    let mut out = File::create(download_folder.join(sanitize(format!(
         "{} {} - {}.mp4",
         Local::now().format("%F %R"),
         filename_prefix,
@@ -97,29 +99,116 @@ async fn download_clip_with_base_url(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    #[test]
-    fn test_download_error_variants() {
-        // Test that DownloadError variants exist and can be created
-        let _parse_err = DownloadError::Parse();
-        let _api_err = DownloadError::Api();
+    #[tokio::test]
+    async fn test_download_clip_full_flow() {
+        // Setup mock HTTP server
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
 
-        // Test conversion from std::io::Error
-        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "test error");
-        let download_err: DownloadError = io_err.into();
-        assert!(matches!(download_err, DownloadError::Filesystem(_)));
+        // Mock the API endpoint that returns video metadata
+        Mock::given(method("GET"))
+            .and(path("/testcode"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "title": "Test Video",
+                "files": {
+                    "mp4": {
+                        "url": format!("{}/video.mp4", mock_server.uri())
+                    }
+                }
+            })))
+            .mount(&mock_server)
+            .await;
+
+        // Mock the video file download endpoint
+        let test_content = b"fake video content";
+        Mock::given(method("GET"))
+            .and(path("/video.mp4"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(test_content))
+            .mount(&mock_server)
+            .await;
+
+        // Test the download
+        let result = download_clip_internal(
+            "testcode",
+            "testuser",
+            &format!("{}/", mock_server.uri()),
+            temp_dir.path(),
+        )
+        .await;
+
+        assert!(result.is_ok());
+
+        // Verify file was created
+        let files: Vec<_> = std::fs::read_dir(temp_dir.path())
+            .unwrap()
+            .filter_map(Result::ok)
+            .collect();
+
+        assert_eq!(files.len(), 1);
+        let file_path = files[0].path();
+        let file_name = file_path.file_name().unwrap().to_str().unwrap();
+
+        // Check file name contains expected parts
+        assert!(file_name.contains("testuser"));
+        assert!(file_name.contains("Test Video"));
+        assert!(file_name.ends_with(".mp4"));
+
+        // Verify file content
+        let content = std::fs::read(&file_path).unwrap();
+        assert_eq!(content, test_content);
     }
 
-    #[test]
-    fn test_url_parsing() {
-        // Test that URL parsing works correctly for the Streamable API
-        let base_url = "https://api.streamable.com/videos/";
-        let shortcode = "test123";
+    #[tokio::test]
+    async fn test_download_clip_api_error() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
 
-        let url = Url::parse(base_url)
-            .and_then(|u| u.join(shortcode))
-            .unwrap();
+        // Mock API returning error
+        Mock::given(method("GET"))
+            .and(path("/badcode"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&mock_server)
+            .await;
 
-        assert_eq!(url.as_str(), "https://api.streamable.com/videos/test123");
+        let result = download_clip_internal(
+            "badcode",
+            "testuser",
+            &format!("{}/", mock_server.uri()),
+            temp_dir.path(),
+        )
+        .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_download_clip_missing_mp4() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
+
+        // Mock API returning response without mp4 file
+        Mock::given(method("GET"))
+            .and(path("/nomp4"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "title": "Test Video",
+                "files": {}
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let result = download_clip_internal(
+            "nomp4",
+            "testuser",
+            &format!("{}/", mock_server.uri()),
+            temp_dir.path(),
+        )
+        .await;
+
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), DownloadError::Api()));
     }
 }
