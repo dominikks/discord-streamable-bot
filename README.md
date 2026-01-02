@@ -47,3 +47,35 @@ DISCORD_TOKEN=<token> cargo run
 ```
 
 to run the app.
+
+### Testing
+
+The project includes unit and integration tests to verify the core functionality.
+Run the tests with:
+
+```bash
+cargo test
+```
+
+The test suite includes:
+- Tests for extracting streamable links from Discord messages
+- Tests for URL parsing and error handling
+- Integration tests that verify the bot's message processing logic
+
+To run tests with output:
+
+```bash
+cargo test -- --nocapture
+```
+
+### Linting and Formatting
+
+Format code:
+```bash
+cargo fmt
+```
+
+Run linter:
+```bash
+cargo clippy
+```
