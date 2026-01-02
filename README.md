@@ -1,4 +1,4 @@
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/dominikks/discord-streamable-bot/Build%20app)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/dominikks/discord-streamable-bot/build.yaml?branch=main)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/dominikks/discord-streamable-bot)
 ![GitHub](https://img.shields.io/github/license/dominikks/discord-streamable-bot)
 
