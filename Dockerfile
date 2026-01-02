@@ -18,8 +18,8 @@ RUN cargo build --release
 ### Stage 2: Compose
 FROM debian:stable-slim as composer
 
-RUN addgroup --gid 1000 discordbot \
-  && adduser -u 1000 --system --gid 1000 discordbot \
+RUN groupadd --gid 1000 discordbot \
+  && useradd -u 1000 --system --gid 1000 discordbot \
   && mkdir -p /app/clips \
   && chown -R discordbot:discordbot /app
 
