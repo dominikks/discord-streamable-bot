@@ -93,3 +93,33 @@ async fn download_clip_with_base_url(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_download_error_variants() {
+        // Test that DownloadError variants exist and can be created
+        let _parse_err = DownloadError::Parse();
+        let _api_err = DownloadError::Api();
+
+        // Test conversion from std::io::Error
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "test error");
+        let download_err: DownloadError = io_err.into();
+        assert!(matches!(download_err, DownloadError::Filesystem(_)));
+    }
+
+    #[test]
+    fn test_url_parsing() {
+        // Test that URL parsing works correctly for the Streamable API
+        let base_url = "https://api.streamable.com/videos/";
+        let shortcode = "test123";
+
+        let url = Url::parse(base_url)
+            .and_then(|u| u.join(shortcode))
+            .unwrap();
+
+        assert_eq!(url.as_str(), "https://api.streamable.com/videos/test123");
+    }
+}

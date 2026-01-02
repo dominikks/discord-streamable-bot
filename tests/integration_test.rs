@@ -1,3 +1,11 @@
+//! Integration tests for the discord-streamable-bot.
+//!
+//! These tests verify the core functionality of extracting streamable links
+//! from Discord messages and the overall structure of the download functionality.
+//!
+//! Note: Discord API interactions are mocked through the extracted functions
+//! to enable testing without requiring an actual Discord bot connection.
+
 use discord_streamable_bot::extract_streamable_shortcode;
 
 #[test]
