@@ -261,6 +261,7 @@ dependencies = [
  "serde_json",
  "serenity",
  "tempfile",
+ "thiserror",
  "tokio",
  "tokio-util",
  "tracing",
