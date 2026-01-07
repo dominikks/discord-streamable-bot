@@ -29,9 +29,9 @@ struct StreamableFile {
 #[derive(Debug)]
 pub enum DownloadError {
     Parse(),
-    Fetch(reqwest::Error),
+    Fetch(#[allow(dead_code)] reqwest::Error),
     Api(),
-    Filesystem(std::io::Error),
+    Filesystem(#[allow(dead_code)] std::io::Error),
 }
 
 impl From<reqwest::Error> for DownloadError {
