@@ -1,6 +1,6 @@
 ############################################################
 ### Stage 1: Build
-FROM clux/muslrust:stable as builder
+FROM clux/muslrust:stable AS builder
 WORKDIR /app
 
 ### Dep caching start
@@ -16,7 +16,7 @@ RUN cargo build --release
 
 ############################################################
 ### Stage 2: Compose
-FROM debian:stable-slim as composer
+FROM debian:stable-slim AS composer
 
 RUN groupadd --gid 1000 discordbot \
   && useradd -u 1000 --system --gid 1000 discordbot \

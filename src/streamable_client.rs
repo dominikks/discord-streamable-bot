@@ -6,6 +6,7 @@ use sanitize_filename::sanitize;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
+use thiserror::Error;
 use tokio::fs::File;
 use tokio::io;
 use tokio_util::compat::FuturesAsyncReadCompatExt;
@@ -26,23 +27,16 @@ struct StreamableFile {
     url: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum DownloadError {
+    #[error("Failed to parse URL")]
     Parse(),
-    Fetch(reqwest::Error),
+    #[error("Failed to fetch: {0}")]
+    Fetch(#[from] reqwest::Error),
+    #[error("API returned invalid data")]
     Api(),
-    Filesystem(std::io::Error),
-}
-
-impl From<reqwest::Error> for DownloadError {
-    fn from(e: reqwest::Error) -> Self {
-        DownloadError::Fetch(e)
-    }
-}
-impl From<std::io::Error> for DownloadError {
-    fn from(e: std::io::Error) -> Self {
-        DownloadError::Filesystem(e)
-    }
+    #[error("Filesystem error: {0}")]
+    Filesystem(#[from] std::io::Error),
 }
 
 #[instrument]
