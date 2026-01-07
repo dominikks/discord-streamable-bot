@@ -49,7 +49,7 @@ impl EventHandler for Handler {
                     msg.react(&ctx.http, ReactionType::try_from("✅").unwrap())
                 }
                 Err(e) => {
-                    error!(?e, "Download failed");
+                    error!(error = %e, "Download failed");
                     msg.react(&ctx.http, ReactionType::try_from("❌").unwrap())
                 }
             };
