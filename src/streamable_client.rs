@@ -1,5 +1,6 @@
 use chrono::Local;
-use futures::stream::TryStreamExt;
+use futures::stream::StreamExt;
+use http_body_util::BodyStream;
 use lazy_static::lazy_static;
 use reqwest::Url;
 use sanitize_filename::sanitize;
@@ -9,7 +10,7 @@ use std::path::Path;
 use thiserror::Error;
 use tokio::fs::File;
 use tokio::io;
-use tokio_util::compat::FuturesAsyncReadCompatExt;
+use tokio_util::io::StreamReader;
 use tracing::{debug, instrument};
 
 lazy_static! {
@@ -71,13 +72,20 @@ async fn download_clip_internal(
     debug!(?url, ?title, "Found clip metadata");
 
     // https://github.com/seanmonstar/reqwest/issues/482#issuecomment-586508535
-    let mut res = reqwest::get(&url)
+    let response = reqwest::get(&url)
         .await?
-        .error_for_status()?
-        .bytes_stream()
-        .map_err(futures::io::Error::other)
-        .into_async_read()
-        .compat();
+        .error_for_status()?;
+    
+    let body: reqwest::Body = response.into();
+    let stream = Box::pin(BodyStream::new(body)
+        .filter_map(|result| async move {
+            match result {
+                Ok(frame) => frame.into_data().ok(),
+                Err(_) => None,
+            }
+        })
+        .map(Ok::<_, std::io::Error>));
+    let mut res = StreamReader::new(stream);
     let mut out = File::create(download_folder.join(sanitize(format!(
         "{} {} - {}.mp4",
         Local::now().format("%F %R"),
