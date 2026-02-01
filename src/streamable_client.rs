@@ -81,7 +81,10 @@ async fn download_clip_internal(
         .filter_map(|result| async move {
             match result {
                 Ok(frame) => frame.into_data().ok(),
-                Err(_) => None,
+                Err(e) => {
+                    tracing::warn!("Error reading frame from response stream: {}", e);
+                    None
+                }
             }
         })
         .map(Ok::<_, std::io::Error>));
