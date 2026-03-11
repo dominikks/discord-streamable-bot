@@ -72,22 +72,22 @@ async fn download_clip_internal(
     debug!(?url, ?title, "Found clip metadata");
 
     // https://github.com/seanmonstar/reqwest/issues/482#issuecomment-586508535
-    let response = reqwest::get(&url)
-        .await?
-        .error_for_status()?;
-    
+    let response = reqwest::get(&url).await?.error_for_status()?;
+
     let body: reqwest::Body = response.into();
-    let stream = Box::pin(BodyStream::new(body)
-        .filter_map(|result| async move {
-            match result {
-                Ok(frame) => frame.into_data().ok(),
-                Err(e) => {
-                    tracing::warn!("Error reading frame from response stream: {}", e);
-                    None
+    let stream = Box::pin(
+        BodyStream::new(body)
+            .filter_map(|result| async move {
+                match result {
+                    Ok(frame) => frame.into_data().ok(),
+                    Err(e) => {
+                        tracing::warn!("Error reading frame from response stream: {}", e);
+                        None
+                    }
                 }
-            }
-        })
-        .map(Ok::<_, std::io::Error>));
+            })
+            .map(Ok::<_, std::io::Error>),
+    );
     let mut res = StreamReader::new(stream);
     let mut out = File::create(download_folder.join(sanitize(format!(
         "{} {} - {}.mp4",
