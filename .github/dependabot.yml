@@ -22,12 +22,9 @@ updates:
     schedule:
       interval: "monthly"
     groups:
-      # Patch updates are low-risk and can be reviewed together
-      actions-patch:
+      # Group all Actions updates together since they don't have meaningful patch updates
+      actions-all:
         update-types:
           - "patch"
-      # Minor and major updates may be breaking and are grouped separately
-      actions-minor-major:
-        update-types:
           - "minor"
           - "major"
