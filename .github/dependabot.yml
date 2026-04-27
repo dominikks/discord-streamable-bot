@@ -5,9 +5,26 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      # Patch updates are low-risk and can be reviewed together
+      cargo-patch:
+        update-types:
+          - "patch"
+      # Minor and major updates may be breaking and are grouped separately
+      cargo-minor-major:
+        update-types:
+          - "minor"
+          - "major"
 
   # Update GitHub Actions monthly
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    groups:
+      # Group all Actions updates together since they don't have meaningful patch updates
+      actions-all:
+        update-types:
+          - "patch"
+          - "minor"
+          - "major"
