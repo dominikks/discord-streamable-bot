@@ -5,6 +5,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    assignees:
+      - "dominikks"
     groups:
       # Patch updates are low-risk and can be reviewed together
       cargo-patch:
@@ -21,6 +23,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    assignees:
+      - "dominikks"
     groups:
       # Group all Actions updates together since they don't have meaningful patch updates
       actions-all:
