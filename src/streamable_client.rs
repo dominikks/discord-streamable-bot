@@ -205,4 +205,180 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), DownloadError::Api()));
     }
+
+    #[tokio::test]
+    async fn test_download_clip_invalid_metadata() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
+
+        for response in [
+            serde_json::json!({"title": "Clip", "files": {"mp4": {"url": null}}}),
+            serde_json::json!({"title": "Clip", "files": {"webm": {"url": "ignored"}}}),
+        ] {
+            mock_server.reset().await;
+            Mock::given(method("GET"))
+                .and(path("/code"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(response))
+                .expect(1)
+                .mount(&mock_server)
+                .await;
+
+            let result = download_clip_internal(
+                "code",
+                "user",
+                &format!("{}/", mock_server.uri()),
+                temp_dir.path(),
+            )
+            .await;
+
+            assert!(matches!(result, Err(DownloadError::Api())));
+            assert_eq!(std::fs::read_dir(temp_dir.path()).unwrap().count(), 0);
+            mock_server.verify().await;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_download_clip_malformed_response() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
+
+        Mock::given(method("GET"))
+            .and(path("/code"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not JSON"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let result = download_clip_internal(
+            "code",
+            "user",
+            &format!("{}/", mock_server.uri()),
+            temp_dir.path(),
+        )
+        .await;
+
+        assert!(matches!(result, Err(DownloadError::Fetch(error)) if error.is_decode()));
+        assert_eq!(std::fs::read_dir(temp_dir.path()).unwrap().count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_download_clip_video_http_error() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
+
+        Mock::given(method("GET"))
+            .and(path("/code"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "title": "Clip",
+                "files": {"mp4": {"url": format!("{}/video.mp4", mock_server.uri())}}
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/video.mp4"))
+            .respond_with(ResponseTemplate::new(503).set_body_string("Service unavailable"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let result = download_clip_internal(
+            "code",
+            "user",
+            &format!("{}/", mock_server.uri()),
+            temp_dir.path(),
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(DownloadError::Fetch(error)) if error.status() == Some(reqwest::StatusCode::SERVICE_UNAVAILABLE))
+        );
+        assert_eq!(std::fs::read_dir(temp_dir.path()).unwrap().count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_download_clip_binary_content_and_sanitized_filename() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
+        let content: Vec<u8> = (0..=255).cycle().take(128 * 1024).collect();
+
+        Mock::given(method("GET"))
+            .and(path("/code"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "title": "../../clips/video: \"test\"?",
+                "files": {"mp4": {"url": format!("{}/video.mp4", mock_server.uri())}}
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/video.mp4"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(content.clone()))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        download_clip_internal(
+            "code",
+            "../user/name",
+            &format!("{}/", mock_server.uri()),
+            temp_dir.path(),
+        )
+        .await
+        .unwrap();
+
+        let files: Vec<_> = std::fs::read_dir(temp_dir.path())
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        assert_eq!(files.len(), 1);
+        let path = files[0].path();
+        assert_eq!(path.parent(), Some(temp_dir.path()));
+        assert_eq!(path.extension().unwrap(), "mp4");
+        assert_eq!(std::fs::read(path).unwrap(), content);
+    }
+
+    #[tokio::test]
+    async fn test_download_clip_missing_destination() {
+        let mock_server = MockServer::start().await;
+        let temp_dir = TempDir::new().unwrap();
+
+        Mock::given(method("GET"))
+            .and(path("/code"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "title": "Clip",
+                "files": {"mp4": {"url": format!("{}/video.mp4", mock_server.uri())}}
+            })))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/video.mp4"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"video"))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let result = download_clip_internal(
+            "code",
+            "user",
+            &format!("{}/", mock_server.uri()),
+            &temp_dir.path().join("missing"),
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(DownloadError::Filesystem(error)) if error.kind() == std::io::ErrorKind::NotFound)
+        );
+    }
+
+    #[tokio::test]
+    async fn test_download_clip_invalid_base_url() {
+        let temp_dir = TempDir::new().unwrap();
+
+        let result = download_clip_internal("code", "user", "invalid URL", temp_dir.path()).await;
+
+        assert!(matches!(result, Err(DownloadError::Parse())));
+        assert_eq!(std::fs::read_dir(temp_dir.path()).unwrap().count(), 0);
+    }
 }
