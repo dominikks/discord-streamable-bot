@@ -8,8 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
-  pull-requests: read
-  issues: write
+  pull-requests: write
 
 concurrency:
   group: dependabot-auto-merge
