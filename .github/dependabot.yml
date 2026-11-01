@@ -1,12 +1,9 @@
 version: 2
 updates:
-  # Update Rust dependencies monthly
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "monthly"
-    assignees:
-      - "dominikks"
+      interval: "weekly"
     groups:
       # Patch updates are low-risk and can be reviewed together
       cargo-patch:
@@ -18,13 +15,10 @@ updates:
           - "minor"
           - "major"
 
-  # Update GitHub Actions monthly
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    assignees:
-      - "dominikks"
+      interval: "weekly"
     groups:
       # Group all Actions updates together since they don't have meaningful patch updates
       actions-all:
@@ -32,3 +26,12 @@ updates:
           - "patch"
           - "minor"
           - "major"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      docker-images:
+        patterns:
+          - "*"

@@ -1,11 +1,23 @@
 name: Lint and test app
 
-on: push
+on:
+  push:
+    branches: [main, development]
+    tags: ['*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
     name: Lint and test code
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
