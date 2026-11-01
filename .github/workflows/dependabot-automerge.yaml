@@ -1,0 +1,100 @@
+name: Dependabot auto-merge
+
+on:
+  workflow_run:
+    workflows: ['Build app', 'Lint and test app']
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  issues: write
+
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Never execute PR code in this privileged workflow.
+      - name: Merge validated updates or assign failures
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          GH_TOKEN: ${{ secrets.DEPENDABOT_MERGE_TOKEN }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run = context.payload.workflow_run;
+            const { data: repository } = await github.rest.repos.get({ owner, repo });
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', base: repository.default_branch, per_page: 100
+            });
+            const pr = prs.find(pr =>
+              pr.user.login === 'dependabot[bot]' &&
+              pr.head.repo?.full_name === repository.full_name &&
+              pr.head.sha === run.head_sha
+            );
+            if (!pr || pr.draft) {
+              core.info('No open Dependabot PR matches this commit.');
+              return;
+            }
+            async function assignFailure(reason) {
+              core.error(reason);
+              if (!pr.assignees.some(user => user.login === 'dominikks')) {
+                await github.rest.issues.addAssignees({
+                  owner, repo, issue_number: pr.number, assignees: ['dominikks']
+                });
+              }
+              core.setFailed(reason);
+            }
+            const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+              owner, repo, head_sha: pr.head.sha, event: 'pull_request', per_page: 100
+            });
+            const workflows = ['.github/workflows/build.yaml', '.github/workflows/lint.yaml'];
+            const latestRuns = workflows.map(path =>
+              runs.filter(candidate => candidate.path === path)
+                .sort((left, right) => right.id - left.id)[0]
+            );
+            if (latestRuns.some(candidate =>
+              candidate?.status === 'completed' &&
+              ['failure', 'timed_out', 'action_required', 'startup_failure'].includes(candidate.conclusion)
+            )) {
+              await assignFailure(`Validation failed for ${pr.html_url}. See the PR checks.`);
+              return;
+            }
+            if (!latestRuns.every(candidate =>
+              candidate?.status === 'completed' && candidate.conclusion === 'success'
+            )) {
+              core.info('Waiting for both validation workflows to pass.');
+              return;
+            }
+            try {
+              if (!process.env.GH_TOKEN) {
+                throw new Error('Configure Actions secret DEPENDABOT_MERGE_TOKEN.');
+              }
+              const { data: rules } = await github.request(
+                'GET /repos/{owner}/{repo}/rules/branches/{branch}',
+                { owner, repo, branch: repository.default_branch }
+              );
+              const protectedChecks = rules.some(rule =>
+                rule.type === 'required_status_checks' &&
+                rule.parameters.strict_required_status_checks_policy &&
+                ['Build docker image', 'Lint and test code'].every(name =>
+                  rule.parameters.required_status_checks.some(check => check.context === name)
+                )
+              );
+              if (!protectedChecks) {
+                throw new Error('Require both CI checks and up-to-date branches in the main ruleset.');
+              }
+              await exec.exec('gh', [
+                'pr', 'merge', String(pr.number), '--repo', `${owner}/${repo}`,
+                '--auto', '--squash', '--match-head-commit', pr.head.sha
+              ]);
+            } catch (error) {
+              await assignFailure(`Auto-merge failed for ${pr.html_url}: ${error.message}`);
+            }

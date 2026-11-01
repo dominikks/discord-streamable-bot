@@ -73,3 +73,22 @@ Run linter:
 ```bash
 cargo clippy
 ```
+
+## Dependency maintenance
+
+Dependabot checks Cargo, GitHub Actions, and digest-pinned Docker base images weekly.
+Updates are automatically squash-merged after both Docker build and lint/test workflows pass.
+Failed validation or auto-merge assigns the PR to `dominikks`.
+
+Required repository configuration:
+
+- Enable auto-merge and squash merging.
+- Require the GitHub Actions checks **Build docker image** and **Lint and test code**, with up-to-date branches, in the active main ruleset.
+- Configure review requirements to permit unattended Dependabot merges.
+- Add Actions secret `DEPENDABOT_MERGE_TOKEN`, scoped to this repository with Contents and Pull requests read/write permissions, so merges trigger image publication.
+  Manage its expiration and rotation.
+
+To pause new merge requests, disable **Dependabot auto-merge** in Actions.
+Cancel already-pending auto-merge requests in each PR's merge box.
+For failure-focused email notifications, use GitHub's **Participating and @mentions** repository notification setting and enable email for participating activity.
+Watching all activity, existing subscriptions, and other notification preferences can still produce emails when PRs open.
