@@ -62,6 +62,10 @@ Or with output:
 cargo test -- --nocapture
 ```
 
+Tests cover link extraction and the metadata-to-file download flow against a local mock HTTP server.
+They verify downloaded binary content, filename sanitization, and metadata, HTTP, URL, and filesystem errors.
+CI runs these tests for dependency PRs before auto-merge.
+
 ### Linting and Formatting
 
 Format code:
