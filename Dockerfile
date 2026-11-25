@@ -1,6 +1,6 @@
 ############################################################
 ### Stage 1: Build
-FROM clux/muslrust:stable@sha256:f2a743194641985fe49ed340369d71fdaefbbdda20871514b5dd086319c454d6 AS builder
+FROM clux/muslrust:stable@sha256:12e02bbe193e3bd9255f9b5a9312f0039a0c79b9e015cf5e81eeab83a1eb8e0f AS builder
 WORKDIR /app
 
 ### Dep caching start
@@ -16,7 +16,7 @@ RUN cargo build --release
 
 ############################################################
 ### Stage 2: Compose
-FROM debian:stable-slim@sha256:13e0a2e78aa0554ad5ff66e4e260c6dbcdff807eb1f39d43b9fb0288aae88b04 AS composer
+FROM debian:stable-slim@sha256:fbfb4059d2127120aa05b6e6064523d2102552f0cf0026ddf0701c12f1f8f3e0 AS composer
 
 RUN groupadd --gid 1000 discordbot \
   && useradd -u 1000 --system --gid 1000 discordbot \
@@ -27,7 +27,7 @@ COPY --chown=discordbot:discordbot --from=builder /app/target/x86_64-unknown-lin
 
 ############################################################
 ### Stage 3: Final image
-FROM gcr.io/distroless/cc:latest@sha256:58e12be899275afaa05f1b03051ab19037ed7f252528e57a3a9ad7e220a62578
+FROM gcr.io/distroless/cc:latest@sha256:809d04afa1be033c441f76bb0051878c342fb76d0ea236bc6dc94b655fa0fbd6
 LABEL maintainer="dominik@kus.software"
 
 COPY --from=composer /etc/passwd /etc/
