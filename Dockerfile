@@ -16,7 +16,7 @@ RUN cargo build --release
 
 ############################################################
 ### Stage 2: Compose
-FROM debian:stable-slim@sha256:fbfb4059d2127120aa05b6e6064523d2102552f0cf0026ddf0701c12f1f8f3e0 AS composer
+FROM debian:stable-slim@sha256:a64d9dbf633e2a2503afac76be521dc25d9b5765150b30d31a3914d4ae969cab AS composer
 
 RUN groupadd --gid 1000 discordbot \
   && useradd -u 1000 --system --gid 1000 discordbot \
@@ -27,7 +27,7 @@ COPY --chown=discordbot:discordbot --from=builder /app/target/x86_64-unknown-lin
 
 ############################################################
 ### Stage 3: Final image
-FROM gcr.io/distroless/cc:latest@sha256:809d04afa1be033c441f76bb0051878c342fb76d0ea236bc6dc94b655fa0fbd6
+FROM gcr.io/distroless/cc:latest@sha256:e8343d4a7da8bb210df0c3ea29de38bbadbba6c773bed0cd8bde506fca3a5c44
 LABEL maintainer="dominik@kus.software"
 
 COPY --from=composer /etc/passwd /etc/
